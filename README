@@ -1,0 +1,28 @@
+CMD FOR ALIGNMENTS
+
+1. Data process on training, dev data
+# generate parallel corpus for cdec
+python train_corpus.py corpus.es corpus.en corpus.es-en 
+python train_corpus.py dev.es dev.en dev.es-en 
+
+2. Cdec cmd:
+(1) filter
+~/workspace/cdec/corpus/filter-length.pl -80 corpus.es-en > training.es-en
+# no need to do filtering for dev dataset, since the golden alignments include 200 lines.
+
+(2) fastAlignment
+~/workspace/cdec/word-aligner/fast_align -i training.es-en -d -v -o -x dev.es-en > test.out
+
+3. Transform keys
+# Transform cdec's alignment output to the data form for F-score
+python dev_alignment.py cdec_out fscore_out
+
+4. f-score
+python eval_alignment.py dev.key dev.out
+
+--------------------------------------------------------------------------------------------------------
+
+
+
+
+
