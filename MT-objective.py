@@ -5,6 +5,21 @@ import os
 import sys
 import subprocess
 
+path_cdec = '/home/brian/workspace/cdec'
+path_BO = '/home/brian/workspace/cdec_BO'
+
+path_aligner = path_cdec + '/word-aligner/fast_align'
+path_transformer = path_BO + '/dataprocess/dev_alignments.py'
+path_evaluater = path_BO + '/f-score/eval_alignment.py'
+
+path_trainingdata = path_BO+'/dataprocess/training.es-en'
+path_devdata= path_BO+'/dataprocess/dev.es-en'
+path_fa_output = path_BO+'/dataprocess/test.out'
+path_devout = path_BO+'/dataprocess/dev.out'
+path_key = path_BO+'/f-score/dev.key'
+
+
+
 class IBM2Objective(object):
     def __init__(self):
         self.domain = np.transpose(np.array([[0.01, 0.2],[0.0001,0.002],[0.01,0.2]]))
@@ -50,7 +65,7 @@ class CdecObjective(object):
         print str(params[0])+ ' ' +str(params[1]) + ' ' +str(params[2])
         
         
-        pipe_in,pipe_out,pipe_err= os.popen3('/home/brian/workspace/cdec/word-aligner/fast_align -i /home/brian/workspace/cdec/training.es-en -d -v -H -x /home/brian/workspace/cdec/test.es-en'+
+        pipe_in,pipe_out,pipe_err= os.popen3(path_aligner + ' -i ' +path_trainingdata + ' -x ' + path_devdata + ' -d -v -H -x ' +
                       ' -prob_align_null '+str(params[0]) +' -a '+str(params[1]) + ' -T ' + str(params[2]) , 'wr' )
         '''
         
@@ -93,13 +108,13 @@ class CdecFastAlignmentObjective(object):
         params = self.map_params(x)
         print str(params[0])+ ' ' +str(params[1]) + ' ' +str(params[2])
         
-        cmd = '/home/brian/workspace/cdec/word-aligner/fast_align -i /home/brian/workspace/cdec_BO/dataprocess/training.es-en -d -v -x /home/brian/workspace/cdec_BO/dataprocess/dev.es-en'+' -prob_align_null '+str(params[0]) +' -a '+str(params[1]) + ' -T ' + str(params[2]) 
-        print cmd
+        cmd = path_aligner + ' -i ' + path_trainingdata + ' -x ' + path_devdata+ ' -d -v  '+' -prob_align_null '+str(params[0]) +' -a '+str(params[1]) + ' -T ' + str(params[2]) 
+        #print cmd
         #+ ' > /home/brian/workspace/cdec_BO/dataprocess/test.out'
 
         pipe_in,pipe_out,pipe_err= os.popen3(cmd, 'wr' )
 
-        fout = open('/home/brian/workspace/cdec_BO/dataprocess/test.out','w')
+        fout = open(path_fa_output,'w')
         line = ''
         while 1:
             line = pipe_out.readline()
@@ -110,7 +125,7 @@ class CdecFastAlignmentObjective(object):
         print '1. Finish Alignment! \n'
 
         
-        pipe_in,pipe_out,pipe_err= os.popen3('python /home/brian/workspace/cdec_BO/dataprocess/dev_alignments.py /home/brian/workspace/cdec_BO/dataprocess/test.out /home/brian/workspace/cdec_BO/dataprocess/dev.out','wr')
+        pipe_in,pipe_out,pipe_err= os.popen3('python '+ path_transformer +' '+  path_fa_output +' '+  path_devout,'wr')
         line = ''
         while 1:
             line = pipe_out.readline()
@@ -119,7 +134,7 @@ class CdecFastAlignmentObjective(object):
             print line
         print '2. Finish Transform! \n'
 
-        pipe_in,pipe_out,pipe_err= os.popen3('python /home/brian/workspace/cdec_BO/f-score/eval_alignment.py /home/brian/workspace/cdec_BO/f-score/dev.key /home/brian/workspace/cdec_BO/dataprocess/dev.out','wr')
+        pipe_in,pipe_out,pipe_err= os.popen3('python ' + path_evaluater +' '+ path_key +' '+  path_devout,'wr')
 
         print '3. Finish Evaluation! \n'
         
@@ -172,6 +187,7 @@ if __name__ == '__main__':
     
     bo = BO(objective, noise=1e-1)
 
+    fout = open('bo.reslut','w')
     for _ in xrange(50):
         bo.optimize(num_iters=1)
 
@@ -182,6 +198,10 @@ if __name__ == '__main__':
         #ei = bo.expected_improvement(bo.grid)
         print 'Best Param:' + str(bo.best_param)
         print 'Best Value:' + str(bo.best_value)
+        fout.write('iterations:'+ str(_)+'\n')
+        fout.write(str(bo.best_param)+'\n')
+        fout.write(str(bo.best_value)+'\n')
+    fout.close()
     print "Optimization finished."
     print "Best parameter settings found:"
     # objective.map_params(...) will attach names to the parameters so you can tell what they are

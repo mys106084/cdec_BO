@@ -106,15 +106,15 @@ class BO:
         """
         X = self._ensure_shape(X)
 	
-	#print 'brian: X.shape:'+str(X.shape) 
-	#for i in range(0,X.shape[0]):
-	#	y_pred, y_variance = self.gp.predict(x, eval_MSE=True)
-	#print 'y_pred'+str(y_pred) 	
+    	#print 'brian: X.shape:'+str(X.shape) 
+    	#for i in range(0,X.shape[0]):
+    	#	y_pred, y_variance = self.gp.predict(x, eval_MSE=True)
+    	#print 'y_pred'+str(y_pred) 	
 
-	y_pred, y_variance = self.gp.predict(X, eval_MSE=True)
-	
+    	y_pred, y_variance = self.gp.predict(X, eval_MSE=True)
+    	
         if predict_variance:
-	    return y_pred, y_variance	
+    	    return y_pred, y_variance	
         else:
             return y_pred
 
@@ -138,24 +138,24 @@ class BO:
         """
 
         X = self._ensure_shape(X)
-	Y_pred, Y_variance = self.gp.predict(X, eval_MSE=True)
-	'''
-	tmp = Y_pred[0]
-	for i in range(1,X.shape[0]):
-	    if(tmp<Y_pred[i]):
-		tmp = Y_pred[i]
-	y_plus = tmp 
-	'''
-	y_plus = np.max(Y_pred)
-	
-	result = np.zeros(Y_pred.shape)
+    	Y_pred, Y_variance = self.gp.predict(X, eval_MSE=True)
+    	'''
+    	tmp = Y_pred[0]
+    	for i in range(1,X.shape[0]):
+    	    if(tmp<Y_pred[i]):
+    		tmp = Y_pred[i]
+    	y_plus = tmp 
+    	'''
+    	y_plus = np.max(Y_pred)
+    	
+    	result = np.zeros(Y_pred.shape)
 
-	Xi = 0.1
-	for i in range(0,X.shape[0]):
-	    Z = (Y_pred[i]-y_plus-Xi)/Y_variance[i]
-	    result[i]= (Y_pred[i]-y_plus-Xi)*stats.norm.cdf(Z) + Y_variance[i]*stats.norm.pdf(Z)  
+    	Xi = 0.1
+    	for i in range(0,X.shape[0]):
+    	    Z = (Y_pred[i]-y_plus-Xi)/Y_variance[i]
+    	    result[i]= (Y_pred[i]-y_plus-Xi)*stats.norm.cdf(Z) + Y_variance[i]*stats.norm.pdf(Z)  
 
-	return result
+    	return result
 	
 	
 
