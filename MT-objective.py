@@ -8,6 +8,8 @@ import subprocess
 path_cdec = '/home/brian/workspace/cdec'
 path_BO = '/home/brian/workspace/cdec_BO'
 
+# for CdecFastAlignmentObjective
+'''
 path_aligner = path_cdec + '/word-aligner/fast_align'
 path_transformer = path_BO + '/dataprocess/dev_alignments.py'
 path_evaluater = path_BO + '/f-score/eval_alignment.py'
@@ -17,9 +19,24 @@ path_devdata= path_BO+'/dataprocess/dev.es-en'
 path_fa_output = path_BO+'/dataprocess/test.out'
 path_devout = path_BO+'/dataprocess/dev.out'
 path_key = path_BO+'/f-score/dev.key'
+'''
+# for CdecAlignmentBLEUObjective
 
+path_trainingdata = path_cdec+'/BO_BLEU/training.es-en'
+path_devdata = path_cdec+'/BO_BLEU/dev.lc-tok.es-en'
+path_devtestdata = path_cdec+'/BO_BLEU/devtest.lc-tok.es-en'
 
+path_fa_output = path_cdec+'/BO_BLEU/training.es-en.fwd_align'
+path_aligner = path_cdec + '/word-aligner/fast_align'
 
+path_extractinit =  path_cdec + '/BO_BLEU/extract.ini' 
+path_cdecinit = path_cdec + '/BO_BLEU/cdec.ini' 
+path_sa = path_cdec + '/BO_BLEU/tranin.sa'
+path_devsgm = path_cdec + '/BO_BLEU/dev.lc-tok.es-en.sgm'
+path_devtestsgm = path_cdec + '/BO_BLEU/devtest.lc-tok.es-en.sgm'
+path_devtestsgm_cut = 'devtest.lc-tok.es-en.sgm'
+path_devgrammar = path_cdec + '/BO_BLEU/dev.grammars'
+path_devtestgrammar = path_cdec + '/BO_BLEU/devtest.grammars'
 class IBM2Objective(object):
     def __init__(self):
         self.domain = np.transpose(np.array([[0.01, 0.2],[0.0001,0.002],[0.01,0.2]]))
@@ -161,6 +178,100 @@ class CdecFastAlignmentObjective(object):
         #score -1000
         return score
 
+class CdecAlignmentBLEUObjective(object):
+    def __init__(self):
+        self.domain = np.transpose(np.array([[0.01, 0.2],[0.0001,0.002],[0.1,20]]))
+        self.ndim = 3
+        
+    def map_params(self, x):
+        params = x.ravel()
+        return params
+    
+    def __call__(self, x):   
+        params = self.map_params(x)
+        print str(params[0])+ ' ' +str(params[1]) + ' ' +str(params[2])
+
+        # 0. Preprocess: (1) filter (2) Language model (3) .ini (4) dev grammar
+        '''
+        # 1. word alignment
+        cmd1 = path_aligner + ' -i ' + path_trainingdata + ' -d -v  '+' -prob_align_null '+str(params[0]) +' -a '+str(params[1]) + ' -T ' + str(params[2]) 
+        p = subprocess.Popen(cmd1, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=True, close_fds=True)
+        (pipe_in, pipe_out) = (p.stdin, p.stdout)
+        fout = open(path_fa_output,'w')
+        line = ''
+        while 1:
+            line = pipe_out.readline()
+            if '' == line:
+                break
+            fout.write(line)
+        fout.close()
+        print '1. Finish Alignment! \n'
+
+        
+        # 2. Compile training data (suffix array)
+        cmd2 = 'python ' + path_cdec + '/python/cdec/sa/compile.py' + ' -b '+ path_trainingdata + ' -a ' +  path_fa_output + ' -c ' + path_extractinit + ' -o ' + path_sa
+        print cmd2
+        p = subprocess.Popen(cmd2, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=True,env = {'PYTHONPATH': path_cdec+'/python'})
+        (pipe_in, pipe_out, pipe_err) = (p.stdin, p.stdout, p.stderr)
+        while 1:
+            line = pipe_err.readline()
+            if '' == line:
+                break
+            print line
+        print '2. Finish Compiling! \n'
+        
+        # 3. Extract grammar
+        cmd3 = 'python ' + path_cdec + '/python/cdec/sa/extract.py ' +  ' -c '+ path_extractinit + ' -g ' + path_devgrammar+ ' -j 2 -z ' + ' < ' + path_devdata +' > '+ path_devsgm
+        print cmd3 
+        p = subprocess.Popen(cmd3, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=True,env = {'PYTHONPATH': path_cdec+'/python'})
+        (pipe_in, pipe_out, pipe_err) = (p.stdin, p.stdout, p.stderr)
+        while 1:
+            line = pipe_err.readline()
+            if '' == line:
+                break
+            print line
+        
+        cmd3 = 'python ' + path_cdec + '/python/cdec/sa/extract.py ' +  ' -c '+ path_extractinit + ' -g ' + path_devtestgrammar+ ' -j 2 -z ' + ' < ' + path_devtestdata +' > '+ path_devtestsgm
+        p = subprocess.Popen(cmd3, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=True,env = {'PYTHONPATH': path_cdec+'/python'})
+        (pipe_in, pipe_out, pipe_err) = (p.stdin, p.stdout, p.stderr)
+        while 1:
+            line = pipe_err.readline()
+            if '' == line:
+                break
+            print line
+            elements = line.split()
+
+
+        print '3. Finish Grammar Extraction! \n'
+        '''
+        # 4. Mira  
+        # Mira make a fixed reference of path_devtestsgm_cut, so we can not use the full url link here
+        os.chdir(path_cdec+'/python')
+        cmd4 = 'python ' + path_cdec + '/training/mira/mira.py ' +  ' -d '+ path_devtestsgm_cut + ' -t ' + path_devtestsgm+ ' -c ' + path_cdecinit + ' -j 2'
+        print cmd4
+        p = subprocess.Popen(cmd4, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=True,env = {'PYTHONPATH': path_cdec+'/python'})
+        (pipe_in, pipe_out, pipe_err) = (p.stdin, p.stdout, p.stderr)
+        
+        score = 0
+        results = ['','','','','','','']
+        i = 0
+        while 1:
+            results[i%7] = pipe_err.readline()
+            if '' == results[i%7]:
+                break
+            print results[i%7]
+            i += 1
+        print results
+        for j in xrange(0,7):
+            elements = results[j].strip().split('=')
+            if len(elements)>1:
+                print elements
+                if elements[0]=='BLEU':
+                    print 'The score is:'+ elements[1]
+                    score = float(elements[1])
+        print '4. Finish Translation! \n'
+        return score
+
 if __name__ == '__main__':
     
     # IBM2
@@ -183,12 +294,12 @@ if __name__ == '__main__':
     #x = np.vstack((x0.T,x1.T))
     x = x.T
     
-    objective = CdecFastAlignmentObjective()
+    objective = CdecAlignmentBLEUObjective()
     
     bo = BO(objective, noise=1e-1)
 
     fout = open('bo.reslut','w')
-    for _ in xrange(50):
+    for _ in xrange(1):
         bo.optimize(num_iters=1)
 
         # Get predictions for plotting
