@@ -6,10 +6,33 @@ import sys
 import subprocess
 
 path_cdec = '/home/brian/workspace/cdec'
-path_BO = '/home/brian/workspace/cdec_BO'
+
+#(1) training, dev, test data #Put in cdec/python
+path_training = 'training.es-en'
+path_dev = 'dev.es-en'
+path_test = 'test.es-en'
+#(2) cdec.ini  #Put in cdec/python
+#path_cdecinit = 'cdec.ini'
+#(3) #Edit cdec/python/cdec.ini
+
+# S.1 fastAlignment
+#path_aligner = path_cdec + '/word-aligner/fast_align'
+#path_aligner =  '../word-aligner/fast_align'
+path_fa_output = 'training.es-en.fwd_align'
+
+# S.2 extractor
+#path_extractinit =  'extract.ini'
+path_train_sa = path_cdec + 'tranin.sa'
+
+# S.3 grammar
+path_devsgm = path_cdec + 'dev.es-en.sgm'
+path_testsgm = path_cdec + 'test.es-en.sgm'
+path_devgrammar = path_cdec + 'dev.grammars'
+path_testgrammar = path_cdec + 'test.grammars'
 
 # for CdecFastAlignmentObjective
 '''
+path_BO = '/home/brian/workspace/cdec_BO'
 path_aligner = path_cdec + '/word-aligner/fast_align'
 path_transformer = path_BO + '/dataprocess/dev_alignments.py'
 path_evaluater = path_BO + '/f-score/eval_alignment.py'
@@ -21,7 +44,7 @@ path_devout = path_BO+'/dataprocess/dev.out'
 path_key = path_BO+'/f-score/dev.key'
 '''
 # for CdecAlignmentBLEUObjective
-
+'''
 path_trainingdata = path_cdec+'/BO_BLEU/training.es-en'
 path_devdata = path_cdec+'/BO_BLEU/dev.lc-tok.es-en'
 path_devtestdata = path_cdec+'/BO_BLEU/devtest.lc-tok.es-en'
@@ -37,6 +60,7 @@ path_devtestsgm = path_cdec + '/BO_BLEU/devtest.lc-tok.es-en.sgm'
 path_devtestsgm_cut = 'devtest.lc-tok.es-en.sgm'
 path_devgrammar = path_cdec + '/BO_BLEU/dev.grammars'
 path_devtestgrammar = path_cdec + '/BO_BLEU/devtest.grammars'
+'''
 class IBM2Objective(object):
     def __init__(self):
         self.domain = np.transpose(np.array([[0.01, 0.2],[0.0001,0.002],[0.01,0.2]]))
@@ -191,8 +215,11 @@ class CdecAlignmentBLEUObjective(object):
         params = self.map_params(x)
         print str(params[0])+ ' ' +str(params[1]) + ' ' +str(params[2])
 
-        # 0. Preprocess: (1) filter (2) Language model (3) .ini (4) dev grammar
-        '''
+        # 0. Preprocess: (1) filter (2) Language model (3) .ini 
+
+        # Set the current working directory
+        os.chdir(path_cdec+'/python')
+
         # 1. word alignment
         cmd1 = path_aligner + ' -i ' + path_trainingdata + ' -d -v  '+' -prob_align_null '+str(params[0]) +' -a '+str(params[1]) + ' -T ' + str(params[2]) 
         p = subprocess.Popen(cmd1, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=True, close_fds=True)
@@ -209,7 +236,7 @@ class CdecAlignmentBLEUObjective(object):
 
         
         # 2. Compile training data (suffix array)
-        cmd2 = 'python ' + path_cdec + '/python/cdec/sa/compile.py' + ' -b '+ path_trainingdata + ' -a ' +  path_fa_output + ' -c ' + path_extractinit + ' -o ' + path_sa
+        cmd2 = 'python ' + path_cdec + '/python/cdec/sa/compile.py' + ' -b '+ path_training + ' -a ' +  path_fa_output + ' -c ' + 'extract.ini' + ' -o ' + path_train_sa
         print cmd2
         p = subprocess.Popen(cmd2, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=True,env = {'PYTHONPATH': path_cdec+'/python'})
         (pipe_in, pipe_out, pipe_err) = (p.stdin, p.stdout, p.stderr)
@@ -221,7 +248,7 @@ class CdecAlignmentBLEUObjective(object):
         print '2. Finish Compiling! \n'
         
         # 3. Extract grammar
-        cmd3 = 'python ' + path_cdec + '/python/cdec/sa/extract.py ' +  ' -c '+ path_extractinit + ' -g ' + path_devgrammar+ ' -j 2 -z ' + ' < ' + path_devdata +' > '+ path_devsgm
+        cmd3 = 'python ' + path_cdec + '/python/cdec/sa/extract.py ' +  ' -c '+ 'extract.ini' + ' -g ' + path_devgrammar+ ' -j 2 -z ' + ' < ' + path_dev +' > '+ path_devsgm
         print cmd3 
         p = subprocess.Popen(cmd3, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=True,env = {'PYTHONPATH': path_cdec+'/python'})
         (pipe_in, pipe_out, pipe_err) = (p.stdin, p.stdout, p.stderr)
@@ -231,7 +258,7 @@ class CdecAlignmentBLEUObjective(object):
                 break
             print line
         
-        cmd3 = 'python ' + path_cdec + '/python/cdec/sa/extract.py ' +  ' -c '+ path_extractinit + ' -g ' + path_devtestgrammar+ ' -j 2 -z ' + ' < ' + path_devtestdata +' > '+ path_devtestsgm
+        cmd3 = 'python ' + path_cdec + '/python/cdec/sa/extract.py ' +  ' -c '+ 'extract.ini' + ' -g ' + path_testgrammar+ ' -j 2 -z ' + ' < ' + path_test +' > '+ path_testsgm
         p = subprocess.Popen(cmd3, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=True,env = {'PYTHONPATH': path_cdec+'/python'})
         (pipe_in, pipe_out, pipe_err) = (p.stdin, p.stdout, p.stderr)
         while 1:
@@ -243,11 +270,11 @@ class CdecAlignmentBLEUObjective(object):
 
 
         print '3. Finish Grammar Extraction! \n'
-        '''
+        
         # 4. Mira  
         # Mira make a fixed reference of path_devtestsgm_cut, so we can not use the full url link here
-        os.chdir(path_cdec+'/python')
-        cmd4 = 'python ' + path_cdec + '/training/mira/mira.py ' +  ' -d '+ path_devtestsgm_cut + ' -t ' + path_devtestsgm+ ' -c ' + path_cdecinit + ' -j 2'
+        
+        cmd4 = 'python ' + path_cdec + '/training/mira/mira.py ' +  ' -d '+ path_devsgm + ' -t ' + path_testsgm+ ' -c ' + 'cdec.ini' + ' -j 2'
         print cmd4
         p = subprocess.Popen(cmd4, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=True,env = {'PYTHONPATH': path_cdec+'/python'})
         (pipe_in, pipe_out, pipe_err) = (p.stdin, p.stdout, p.stderr)
